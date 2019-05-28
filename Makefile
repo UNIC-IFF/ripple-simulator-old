@@ -3,7 +3,7 @@
 # file license.txt or http://www.opensource.org/licenses/mit-license.php.
 
 DEFS       +=
-LIBS       = -pthread
+LIBS       = -pthread -lboost_program_options
 DEBUGFLAGS = -DDEBUG -g
 CXXFLAGS   = -O0 -std=c++11 -Wall -Wno-sign-compare -Wno-char-subscripts \
              -Wno-invalid-offsetof -Wformat $(DEBUGFLAGS) $(DEFS)

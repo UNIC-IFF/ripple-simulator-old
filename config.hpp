@@ -98,7 +98,7 @@ class SimulatorConfiguration{
         int Self_Weight = SELF_WEIGHT;
         int Packets_on_Wire = PACKETS_ON_WIRE;
 
-        int consensus_percent;
+        int consensus_percent =  CONSENSUS_PERCENT;
 
         SimulatorConfiguration( std::string cfilename): configfilename(cfilename) {
             read_configFile( cfilename);
@@ -111,7 +111,9 @@ class SimulatorConfiguration{
             configfilename=cfilename;
             boost::property_tree::ini_parser::read_ini(configfilename, pt);
 
-            //pt.find ()
+            // boost::property_tree::ptree::const_assoc_iterator miter= pt.find("Latency.max_c2c_latency"); 
+            // if (miter== pt.not_found())
+            //     std::cerr << "not found" << std::endl;
 
             Max_c2c_latency=pt.get<int>("Latency.max_c2c_latency");
             Min_c2c_latency=pt.get<int>("Latency.min_c2c_latency");

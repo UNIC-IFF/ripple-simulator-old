@@ -25,6 +25,13 @@
 
 #include "config.hpp"
 
+// #include <boost/program_options/cmdline.hpp>
+#include <boost/program_options.hpp>
+// #include <boost/program_options/variables_map.hpp>
+// #include <boost/program_options/options_description.hpp>
+
+
+namespace po= boost::program_options ;
 
 static SimulatorConfiguration myConfig;
 
@@ -137,16 +144,54 @@ void Node::receiveMessage(const Message& m, Network& network)
 
 int main(int argc, char * argv[])
 {
-    // getting the configuration parameters
-    if (argc != 2){
-        // using defaults
-        std::cerr << "Using default settings" << std::endl 
-            << " To load configurations use: " << argv[0] << " <config_filename>" << std::endl;
+    // std::string desc = "Ripple simulator";
+    // Declare the supported options.
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("help", "produce help message")
+        ("num_nodes", po::value<int>(&myConfig.Num_Nodes), "set number of nodes")
+        ("num_malicious", po::value<int>(&myConfig.Num_Malicious), "set number of malicious nodes")
+        ("max_e2c_latency", po::value<int>(&myConfig.Max_e2c_latency), "set max end to core latency")
+        ("min_e2c_latency", po::value<int>(&myConfig.Min_e2c_latency), "set min end to core latency")
+        ("max_c2c_latency", po::value<int>(&myConfig.Max_c2c_latency), "set max core to core latency")
+        ("min_c2c_latency", po::value<int>(&myConfig.Min_c2c_latency), "set min core to core latency")
+        ("consensus_percent", po::value<int>(&myConfig.consensus_percent), "set percentance for consensus")
+        ("num_outbound_links", po::value<int>(&myConfig.Num_Outbound_Links), "set number of outbound links per node")
+        ("max_unl", po::value<int>(&myConfig.Max_UNL), "set max Unique Node list size per node")
+        ("min_unl", po::value<int>(&myConfig.Min_UNL), "set min Unique Node list size per node")
+        ("unl_threshold", po::value<int>(&myConfig.UNL_threshold), "sets threshold for changing node's position")
+        ("base_delay", po::value<int>(&myConfig.Base_Delay), "Base_Delay")
+        ("self_weight", po::value<int>(&myConfig.Self_Weight), "Self_Weight")
+        ("packets_on_wire", po::value<int>(&myConfig.Packets_on_Wire), "packets on wire")
+        ("config_file", po::value<std::string>(), "load from configuration file")
+
+    ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);    
+
+    if (vm.count("help")) {
+        std::cout << desc << "\n";
+        return 1;
     }
-    else {
-        std::cerr << "Using config file : " << argv[1] << std::endl;
-        myConfig.read_configFile(argv[1]);
-    }
+
+    if (vm.count("config_file")) {
+        std::cerr << "Using config file : " << vm["compression"].as<std::string>() << std::endl;
+        myConfig.read_configFile(vm["compression"].as<std::string>()); 
+    
+    } 
+
+    // // getting the configuration parameters
+    // if (argc != 2){
+    //     // using defaults
+    //     std::cerr << "Using default settings" << std::endl 
+    //         << " To load configurations use: " << argv[0] << " <config_filename>" << std::endl;
+    // }
+    // else {
+    //     std::cerr << "Using config file : " << argv[1] << std::endl;
+    //     myConfig.read_configFile(argv[1]);
+    // }
 
 
 
@@ -237,6 +282,7 @@ int main(int argc, char * argv[])
     }
     std::cerr << "Created " << network.messages.size()  << " events" << std::endl;
     
+    bool isFatal=false;
     // run simulation
     do
     {
@@ -249,7 +295,9 @@ int main(int argc, char * argv[])
         if (ev == network.messages.end())
         {
             std::cerr << "Fatal: Radio Silence" << std::endl;
-            return 0;
+            isFatal=true;
+            break;
+            // return 0;
         }
 
         if ((ev->first / 100) > (network.master_time / 100))
@@ -271,9 +319,13 @@ int main(int argc, char * argv[])
     int mc = 0;
     for (std::map<int, Event>::iterator it = network.messages.begin(); it != network.messages.end(); ++it)
             mc += it->second.messages.size();
+
+    if(!isFatal)
         std::cerr << "Consensus reached in " << network.master_time << " ms with " << mc
         << " messages on the wire" << std::endl;
-        
+    else
+        std::cerr << "FATAL: Radio Silence in " << network.master_time << " ms with " << mc << " messages on the wire" << std::endl;
+    
     
     // output results
     long total_messages_sent= 0 ;
@@ -283,7 +335,7 @@ int main(int argc, char * argv[])
 
     std::cout << myConfig.Num_Nodes <<"\t"<< myConfig.Num_Malicious << "\t" << myConfig.consensus_percent << "\t" <<  myConfig.Num_Outbound_Links << "\t" << myConfig.Max_UNL << "\t" <<myConfig.Min_UNL << "\t" <<myConfig.UNL_threshold 
             << "\t" << myConfig.Min_c2c_latency << "\t" << myConfig.Max_c2c_latency << "\t" << myConfig.Min_e2c_latency<< "\t" <<myConfig.Max_e2c_latency
-            << "\t" << network.master_time<< "\t" << mc<< "\t" <<total_messages_sent << std::endl ;
+            << "\t" << network.master_time<< "\t" << mc<< "\t" <<total_messages_sent << "\t"<< isFatal<< std::endl ;
     
     for( Node* n : nodes){
         delete(n);
