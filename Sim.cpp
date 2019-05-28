@@ -17,42 +17,16 @@
 */
 //==============================================================================
 
+// #include <fstream>
 #include <iostream>
 #include <random>
 
 #include "Core.h"
 
-#define LEDGER_CONVERGE          4
-#define LEDGER_FORCE_CONVERGE    7
-#define AV_MIN_CONSENSUS        50
-#define AV_AVG_CONSENSUS        60
-#define AV_MAX_CONSENSUS        70
+#include "config.hpp"
 
 
-#define NUM_NODES             1000
-#define NUM_MALICIOUS_NODES     15
-#define CONSENSUS_PERCENT       80
-
-// Latencies in milliseconds
-// E2C - End to core, the latency from a node to a nearby node
-// C2C - Core to core, the additional latency when nodes are far 
-#define MIN_E2C_LATENCY          5
-#define MAX_E2C_LATENCY         50
-#define MIN_C2C_LATENCY          5
-#define MAX_C2C_LATENCY        200
-
-#define NUM_OUTBOUND_LINKS      10
-
-#define UNL_MIN                 20
-#define UNL_MAX                 30
-#define UNL_THRESH              (UNL_MIN/2) // unl datapoints we have to have before we change position
-
-#define BASE_DELAY               1 // extra time we delay a message to coalesce/suppress
-
-#define SELF_WEIGHT              1 // how many UNL votes you give yourself
-
-#define PACKETS_ON_WIRE          3 // how many packets can be "on the wire" per link per direction
-                                   // simulates non-infinite bandwidth
+static SimulatorConfiguration myConfig;
 
 int nodes_positive=0, nodes_negative=0;
 
@@ -105,7 +79,7 @@ void Node::receiveMessage(const Message& m, Network& network)
         }
     }
 
-    if (n < NUM_MALICIOUS_NODES) // if we are a malicious node, be contrarian
+    if (n < myConfig.Num_Malicious) // if we are a malicious node, be contrarian
         unl_balance = -unl_balance;
 
     // add a bias in favor of 'no' as time passes
@@ -113,9 +87,9 @@ void Node::receiveMessage(const Message& m, Network& network)
     unl_balance -= network.master_time / 250;
 
     bool pos_change=false;
-    if (unl_count >= UNL_THRESH)
+    if (unl_count >= myConfig.UNL_threshold)
     { // We have enough data to make decisions
-        if ( (knowledge[n] == 1) && (unl_balance < (-SELF_WEIGHT)) )
+        if ( (knowledge[n] == 1) && (unl_balance < (-myConfig.Self_Weight)) )
         {
             // we switch to -
             knowledge[n] = -1;
@@ -124,7 +98,7 @@ void Node::receiveMessage(const Message& m, Network& network)
             changes.insert(std::make_pair(n, NodeState(n, ++nts[n], -1)));
             pos_change=true;
         }
-        else if ( (knowledge[n] == -1) && (unl_balance > SELF_WEIGHT) )
+        else if ( (knowledge[n] == -1) && (unl_balance > myConfig.Self_Weight) )
         {
             // we switch to +
             knowledge[n] = 1;
@@ -150,9 +124,9 @@ void Node::receiveMessage(const Message& m, Network& network)
                 if (!pos_change)
                 {
                     // delay the messag a bit to permit coalescing and suppression
-                    send_time += BASE_DELAY;
+                    send_time += myConfig.Base_Delay;
                     if (link.lm_recv_time > send_time) // a packet is on the wire
-                        send_time += link.total_latency / PACKETS_ON_WIRE; // wait a bit extra to send
+                        send_time += link.total_latency / myConfig.Packets_on_Wire; // wait a bit extra to send
                 }
                 network.sendMessage(Message(n, link.to_node, changes), link, send_time);
                 messages_sent++;
@@ -161,23 +135,45 @@ void Node::receiveMessage(const Message& m, Network& network)
     }
 }
 
-int main(void)
+int main(int argc, char * argv[])
 {
+    // getting the configuration parameters
+    if (argc != 2){
+        // using defaults
+        std::cerr << "Using default settings" << std::endl 
+            << " To load configurations use: " << argv[0] << " <config_filename>" << std::endl;
+    }
+    else {
+        std::cerr << "Using config file : " << argv[1] << std::endl;
+        myConfig.read_configFile(argv[1]);
+    }
+
+
+
+
+    std::cerr << "Running simulator for : \n\t "<< myConfig.Num_Nodes << " Nodes, " << myConfig.Num_Malicious << " of them are MALICIOUS, and CONSENSUS PERCENT " << myConfig.consensus_percent 
+            << "\n \t NUM_OUTBOUND_LINKS per Node : " <<  myConfig.Num_Outbound_Links
+            << "\n \tNum of UNL nodes per node follows Uniform(" << myConfig.Min_UNL << "," <<myConfig.Max_UNL << ") and the threshold to change position is " <<myConfig.UNL_threshold 
+            << "\n \tNetwork latency between core nodes follows Uniform (" << myConfig.Min_c2c_latency << "," << myConfig.Max_c2c_latency << ") " 
+            << "\n \tNetwork latency between end nodes and core nodes follows Uniform ("<<myConfig.Min_e2c_latency<< "," <<myConfig.Max_e2c_latency << ")"
+            << std::endl ;
 
     // This will produce the same results each time
     std::mt19937 gen;
-    std::uniform_int_distribution<> r_e2c(MIN_E2C_LATENCY, MAX_E2C_LATENCY);
-    std::uniform_int_distribution<> r_c2c(MIN_C2C_LATENCY, MAX_C2C_LATENCY);
-    std::uniform_int_distribution<> r_unl(UNL_MIN, UNL_MAX);
-    std::uniform_int_distribution<> r_node(0, NUM_NODES-1);
+    std::uniform_int_distribution<> r_e2c(myConfig.Min_e2c_latency, myConfig.Max_e2c_latency);
+    std::uniform_int_distribution<> r_c2c(myConfig.Min_c2c_latency, myConfig.Max_c2c_latency);
+    std::uniform_int_distribution<> r_unl(myConfig.Min_UNL, myConfig.Max_UNL);
+    std::uniform_int_distribution<> r_node(0, myConfig.Num_Nodes-1);
 
-    Node* nodes[NUM_NODES];
-
+    // Node* nodes[myConfig.Num_Nodes];
+    // Node nodes= new Node[myConfig.Num_Nodes];
+    std::vector<Node*> nodes;
     // create nodes
     std::cerr << "Creating nodes" << std::endl;
-    for (int i = 0; i < NUM_NODES; ++i)
+    for (int i = 0; i < myConfig.Num_Nodes; ++i)
     {
-        nodes[i] = new Node(i, NUM_NODES);
+        // nodes[i] = new Node(i, myConfig.Num_Nodes);
+        nodes.push_back(new Node(i,myConfig.Num_Nodes));
         nodes[i]->e2c_latency = r_e2c(gen);
 
         // our own position starts as 50/50 split
@@ -210,9 +206,9 @@ int main(void)
 
     // create links
     std::cerr << "Creating links" << std::endl;
-    for (int i = 0; i < NUM_NODES; ++i)
+    for (int i = 0; i < myConfig.Num_Nodes; ++i)
     {
-        int links = NUM_OUTBOUND_LINKS;
+        int links = myConfig.Num_Outbound_Links;
         while (links > 0)
         {
             int lt = r_node(gen);
@@ -230,7 +226,7 @@ int main(void)
 
     // trigger all nodes to make initial broadcasts of their own positions
     std::cerr << "Creating initial messages" << std::endl;
-    for (int i = 0; i < NUM_NODES; ++i)
+    for (int i = 0; i < myConfig.Num_Nodes; ++i)
     {
         for (Link& l : nodes[i]->links)
         {
@@ -244,9 +240,9 @@ int main(void)
     // run simulation
     do
     {
-        if (nodes_positive > (NUM_NODES * CONSENSUS_PERCENT / 100))
+        if (nodes_positive > (myConfig.Num_Nodes * myConfig.consensus_percent / 100))
             break;
-        if (nodes_negative > (NUM_NODES * CONSENSUS_PERCENT / 100))
+        if (nodes_negative > (myConfig.Num_Nodes * myConfig.consensus_percent / 100))
             break;
         
         std::map<int, Event>::iterator ev=network.messages.begin();
@@ -277,10 +273,19 @@ int main(void)
             mc += it->second.messages.size();
         std::cerr << "Consensus reached in " << network.master_time << " ms with " << mc
         << " messages on the wire" << std::endl;
+        
     
     // output results
     long total_messages_sent= 0 ;
-    for (int i = 0; i < NUM_NODES; ++i)
+    for (int i = 0; i < myConfig.Num_Nodes; ++i)
         total_messages_sent += nodes[i]->messages_sent;
-    std::cerr << "The average node sent " << total_messages_sent/NUM_NODES << " messages" << std::endl;
+    std::cerr << "The average node sent " << total_messages_sent/myConfig.Num_Nodes << " messages" << std::endl;
+
+    std::cout << myConfig.Num_Nodes <<"\t"<< myConfig.Num_Malicious << "\t" << myConfig.consensus_percent << "\t" <<  myConfig.Num_Outbound_Links << "\t" << myConfig.Max_UNL << "\t" <<myConfig.Min_UNL << "\t" <<myConfig.UNL_threshold 
+            << "\t" << myConfig.Min_c2c_latency << "\t" << myConfig.Max_c2c_latency << "\t" << myConfig.Min_e2c_latency<< "\t" <<myConfig.Max_e2c_latency
+            << "\t" << network.master_time<< "\t" << mc<< "\t" <<total_messages_sent << std::endl ;
+    
+    for( Node* n : nodes){
+        delete(n);
+    }
 }
