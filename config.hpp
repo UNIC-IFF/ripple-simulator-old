@@ -83,6 +83,7 @@ class SimulatorConfiguration{
         int Num_Nodes           = NUM_NODES;
         int Num_Malicious       = NUM_MALICIOUS_NODES;
         int Num_Outbound_Links  = NUM_OUTBOUND_LINKS;
+        float malicious_nodes_percentage =100.0* NUM_MALICIOUS_NODES / NUM_NODES;
         
         int Max_e2c_latency = MAX_E2C_LATENCY;
         int Min_e2c_latency = MIN_E2C_LATENCY;
@@ -123,7 +124,8 @@ class SimulatorConfiguration{
 
             Num_Nodes=pt.get<int>("Nodes.num_nodes");
             Num_Malicious=pt.get<int>("Nodes.num_malicious");
-            
+            malicious_nodes_percentage = 100.0* Num_Malicious / Num_Nodes;
+
             consensus_percent=pt.get<int>("Blockchain.consensus_percent");
             Max_UNL=pt.get<int>("Blockchain.max_unl");
             Min_UNL=pt.get<int>("Blockchain.min_unl");

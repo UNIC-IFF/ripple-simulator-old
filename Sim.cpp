@@ -150,6 +150,7 @@ int main(int argc, char * argv[])
     desc.add_options()
         ("help", "produce help message")
         ("num_nodes", po::value<int>(&myConfig.Num_Nodes), "set number of nodes")
+        ("mal_nodes_pC", po::value<float>(&myConfig.malicious_nodes_percentage),"set percentange of num_nodes to be malicious ")
         ("num_malicious", po::value<int>(&myConfig.Num_Malicious), "set number of malicious nodes")
         ("max_e2c_latency", po::value<int>(&myConfig.Max_e2c_latency), "set max end to core latency")
         ("min_e2c_latency", po::value<int>(&myConfig.Min_e2c_latency), "set min end to core latency")
@@ -176,9 +177,16 @@ int main(int argc, char * argv[])
         return 1;
     }
 
+    if (vm.count("mal_nodes_pC")){
+        myConfig.Num_Malicious=myConfig.Num_Nodes * vm["mal_nodes_pC"].as<float>() /100 ;
+    }
+    else{
+        myConfig.malicious_nodes_percentage=100*myConfig.Num_Malicious/myConfig.Num_Nodes;
+    }
+
     if (vm.count("config_file")) {
-        std::cerr << "Using config file : " << vm["compression"].as<std::string>() << std::endl;
-        myConfig.read_configFile(vm["compression"].as<std::string>()); 
+        std::cerr << "Using config file : " << vm["config_file"].as<std::string>() << std::endl;
+        myConfig.read_configFile(vm["config_file"].as<std::string>()); 
     
     } 
 
@@ -335,7 +343,7 @@ int main(int argc, char * argv[])
 
     std::cout << myConfig.Num_Nodes <<"\t"<< myConfig.Num_Malicious << "\t" << myConfig.consensus_percent << "\t" <<  myConfig.Num_Outbound_Links << "\t" << myConfig.Max_UNL << "\t" <<myConfig.Min_UNL << "\t" <<myConfig.UNL_threshold 
             << "\t" << myConfig.Min_c2c_latency << "\t" << myConfig.Max_c2c_latency << "\t" << myConfig.Min_e2c_latency<< "\t" <<myConfig.Max_e2c_latency
-            << "\t" << network.master_time<< "\t" << mc<< "\t" <<total_messages_sent << "\t"<< isFatal<< std::endl ;
+            << "\t" << network.master_time<< "\t" << mc<< "\t" <<total_messages_sent << "\t"<< (float)mc/(mc+total_messages_sent)<< "\t"<<isFatal << "\t"<< myConfig.malicious_nodes_percentage<< "\t"<<std::endl ;
     
     for( Node* n : nodes){
         delete(n);
