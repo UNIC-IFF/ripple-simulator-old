@@ -16,7 +16,8 @@ for lsl in linestyles_list:
 
 # fname="./cases_output_test1.csv"
 # fname="./results/case_N_nodesvsMalnodes_2/cases_output_comb.csv"
-fname="./results/case_N_nodesvsMalnodes_3/cases_output.csv"
+# fname="./results/case_N_nodesvsMalnodes_3/cases_output.csv"
+fname="./results/case_NnodesVSMalnodes_ovUNLs_1/cases_output2.csv"
 if len(sys.argv)>1:
     fname=sys.argv[1]
 
@@ -46,6 +47,8 @@ elif pd.isna(res["malicious nodes portion"][0]):
 unique_NumNodes=pd.unique(res['Num_nodes'])
 N_unique_NumNodes=pd.unique(res['Num_nodes']).shape[0]
 #N_cases_per_Nnodes=int(res.shape[0]/N_unique_NumNodes)
+unique_ovUNLs=pd.unique(res['overlappingUNLs'])
+N_unique_ovUNLs=unique_ovUNLs.shape[0]
 
 unique_malpC=pd.unique(res['malicious nodes portion'])
 
@@ -79,6 +82,7 @@ legend2.get_frame().set_facecolor('C1')
 fig2.savefig(fname[:-4]+'upmsgs_numNodes_malpC_1.png')
 
 
+
 # Plot figure 3 for convergence time vs malicious nodes portion  for each Num_nodes value
 # Plot figure 4 for unutilized messages vs malicious nodes portion  for each Num_nodes value
 # Plot figure 5 for convergence time per node vs malicious nodes portion for each num_nodes value
@@ -89,12 +93,14 @@ fig5, ax5 = plt.subplots()
 fig6, ax6 = plt.subplots()
 
 for i,mnn in enumerate(unique_NumNodes):
-    tmp=res[res['Num_nodes']==mnn].drop_duplicates()
-    ax3.semilogy(tmp['malicious nodes portion'] , tmp['convergence_time'], color=fig_fmts[i][0] ,marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mnn)+' Num Nodes')#plot
-    ax4.plot(tmp['malicious nodes portion'] , tmp['unprocessed_messages ratio'], color=fig_fmts[i][0],marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mnn)+' Num Nodes')
-    ax5.plot(tmp['malicious nodes portion'] , tmp['convergence_time']/mnn, color=fig_fmts[i][0],marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mnn)+' Num Nodes')
-    ax6.plot(tmp['malicious nodes portion'] , tmp['total_messages_sent']/mnn, color=fig_fmts[i][0],marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mnn)+' Num Nodes')
-    # plt.yscale('symlog', linthrehy=0.001)
+    tmp1=res[res['Num_nodes']==mnn].drop_duplicates()
+    for j,munlov in enumerate(unique_ovUNLs):
+        tmp=tmp1[tmp1['overlappingUNLs']==munlov].drop_duplicates()
+        ax3.semilogy(tmp['malicious nodes portion'] , tmp['convergence_time'], color=fig_fmts[i*N_unique_NumNodes+j][0] ,marker=fig_fmts[i*N_unique_NumNodes+j][1], linestyle=fig_fmts[i*N_unique_NumNodes+j][2],label=str(mnn)+' Num Nodes'+str(munlov)+' ovUNLs')#plot
+        ax4.plot(tmp['malicious nodes portion'] , tmp['unprocessed_messages ratio'], color=fig_fmts[i*N_unique_NumNodes+j][0],marker=fig_fmts[i*N_unique_NumNodes+j][1], linestyle=fig_fmts[i*N_unique_NumNodes+j][2],label=str(mnn)+' Num Nodes'+str(munlov)+' ovUNLs')
+        ax5.plot(tmp['malicious nodes portion'] , tmp['convergence_time']/mnn, color=fig_fmts[i*N_unique_NumNodes+j][0],marker=fig_fmts[i*N_unique_NumNodes+j][1], linestyle=fig_fmts[i*N_unique_NumNodes+j][2],label=str(mnn)+' Num Nodes'+str(munlov)+' ovUNLs')
+        ax6.plot(tmp['malicious nodes portion'] , tmp['total_messages_sent']/mnn, color=fig_fmts[i*N_unique_NumNodes+j][0],marker=fig_fmts[i*N_unique_NumNodes+j][1], linestyle=fig_fmts[i*N_unique_NumNodes+j][2],label=str(mnn)+' Num Nodes'+str(munlov)+' ovUNLs')
+        # plt.yscale('symlog', linthrehy=0.001)
 
 ax3.set(xlabel='Malicious Nodes %', ylabel='Convergence time (ms)', title="Convergence time vs malicious nodes %")#ratio for various Number of Nodes")
 ax3.grid()
@@ -148,3 +154,66 @@ fig7.savefig(fname[:-4]+'_consensus_scatter_1.png')
 
 #write csv with titles
 res.to_csv(fname[:-4]+'_out.csv',sep="\t")
+
+
+###### Fig 8 
+##### 3D scatterplot X: Mal_nodes percentage, Y: Num_Nodes, Z: UNL overlapping, red:nonConvergence
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
+
+fig8=plt.figure()
+ax8 =  fig8.add_subplot(111, projection='3d')
+ax8.scatter(tmp_wC['Num_malicious'],tmp_wC['Num_nodes'], tmp_wC['overlappingUNLs'],c='g',alpha=0.5, label='Consensus achieved')
+ax8.scatter(tmp_nC['Num_malicious'],tmp_nC['Num_nodes'], tmp_nC['overlappingUNLs'],c='r',alpha=0.9, label='No Consensus')
+X_20pC,Y_20pC = np.meshgrid(pC_lines['Num_malicious'],pC_lines['20pC_line'])
+X_33pC,Y_33pC = np.meshgrid(pC_lines['Num_malicious'],pC_lines['33pC_line'])
+SurfV_20pC=np.ones(X_20pC.shape)
+SurfV_33pC=np.ones(X_33pC.shape)
+
+#ax8.plot_surface(X_20pC,Y_20pC,SurfV_20pC,c='blue',alpha=0.3,label="20% mal Nodes")
+#ax8.plot_surface(X_33pC,Y_33pC,SurfV_33pC,c='yellow',alpha=0.5,label="33% mal Nodes")
+ax8.set(xlabel="Number of malicious nodes", ylabel='Number of nodes', zlabel='UNL overlapping', title="Consensus achievements")
+legend8=ax8.legend(loc="best", shadow=False, fontsize='small')
+legend8.get_frame().set_facecolor('C1')
+fig8.savefig(fname[:-4]+'_consensus_scatter3D_1.png')
+
+
+
+# fig9, ax9 = plt.subplots()
+# fig10, ax10 = plt.subplots()
+# fig11, ax11 = plt.subplots()
+# fig12, ax12 = plt.subplots()
+
+
+# for i,mnn in enumerate(unique_NumNodes):
+#     tmp=res[res['Num_nodes']==mnn].drop_duplicates()
+#     ax9.semilogy(tmp['malicious nodes portion'] , tmp['convergence_time'], color=fig_fmts[i][0] ,marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mnn)+' Num Nodes')#plot
+#     ax10.plot(tmp['malicious nodes portion'] , tmp['unprocessed_messages ratio'], color=fig_fmts[i][0],marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mnn)+' Num Nodes')
+#     ax11.plot(tmp['malicious nodes portion'] , tmp['convergence_time']/mnn, color=fig_fmts[i][0],marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mnn)+' Num Nodes')
+#     ax12.plot(tmp['malicious nodes portion'] , tmp['total_messages_sent']/mnn, color=fig_fmts[i][0],marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mnn)+' Num Nodes')
+#     # plt.yscale('symlog', linthrehy=0.001)
+
+# ax9.set(xlabel='Malicious Nodes %', ylabel='Convergence time (ms)', title="Convergence time vs malicious nodes %")#ratio for various Number of Nodes")
+# ax9.grid()
+# legend9=ax9.legend(loc='best', shadow=False, fontsize='small')
+# legend9.get_frame().set_facecolor('C1')
+# fig9.savefig(fname[:-4]+'convTime_malpC_numNodes_ovUNL_1.png')
+
+# ax10.set(xlabel='Malicious Nodes %', ylabel='Unprocessed messages ratio', title="Unprocessed messages ratio vs malicious nodes %")# ratio for various Number of Nodes")
+# ax10.grid()
+# legend10=ax10.legend(loc='best', shadow=False, fontsize='small')
+# legend10.get_frame().set_facecolor('C1')
+# fig10.savefig(fname[:-4]+'upmsgs_malpC_numNodes_ovUNL_1.png')
+
+# ax11.set(xlabel='Malicious Nodes %', ylabel='Convergence time per node (ms)', title="Convergence time per Node vs malicious nodes %")#ratio for various Number of Nodes")
+# ax11.grid()
+# legend11=ax11.legend(loc='best', shadow=False, fontsize='small')
+# legend11.get_frame().set_facecolor('C1')
+# fig11.savefig(fname[:-4]+'_convTimepN_malpC_numNodes_ovUNL_1.png')
+
+# ax12.set(xlabel='Malicious Nodes %', ylabel='Average messages per node', title="Average messages per Node vs malicious nodes %")#ratio for various Number of Nodes")
+# ax12.grid()
+# legend12=ax12.legend(loc='best', shadow=False, fontsize='small')
+# legend12.get_frame().set_facecolor('C1')
+# fig12.savefig(fname[:-4]+'_msgspN_malpC_numNodes_ovUNL_1.png')
+
