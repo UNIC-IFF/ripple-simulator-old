@@ -94,6 +94,8 @@ class SimulatorConfiguration{
         int Max_UNL         = UNL_MAX;
         int Min_UNL         = UNL_MIN;
         int UNL_threshold   = UNL_THRESH;
+        float overlappingUNLs= 0; // 0 for not forcing, otherwise the percentage of MAX_UNL
+                                    // when >0, MIN_UNL=max(overlappingUNLs*MAX_UNL, MIN_UNL) 
 
         int Base_Delay  = BASE_DELAY;
         int Self_Weight = SELF_WEIGHT;

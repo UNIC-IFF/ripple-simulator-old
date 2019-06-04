@@ -86,7 +86,7 @@ void Node::receiveMessage(const Message& m, Network& network)
         }
     }
 
-    if (n < myConfig.Num_Malicious) // if we are a malicious node, be contrarian
+    if (this->isMalicious) // if we are a malicious node, be contrarian
         unl_balance = -unl_balance;
 
     // add a bias in favor of 'no' as time passes
@@ -161,6 +161,7 @@ int main(int argc, char * argv[])
         ("max_unl", po::value<int>(&myConfig.Max_UNL), "set max Unique Node list size per node")
         ("min_unl", po::value<int>(&myConfig.Min_UNL), "set min Unique Node list size per node")
         ("unl_threshold", po::value<int>(&myConfig.UNL_threshold), "sets threshold for changing node's position")
+        ("overlappingUNLs", po::value<float>(&myConfig.overlappingUNLs),"force to use the first MIN_UNL nodes in all UNLs")
         ("base_delay", po::value<int>(&myConfig.Base_Delay), "Base_Delay")
         ("self_weight", po::value<int>(&myConfig.Self_Weight), "Self_Weight")
         ("packets_on_wire", po::value<int>(&myConfig.Packets_on_Wire), "packets on wire")
@@ -182,6 +183,18 @@ int main(int argc, char * argv[])
     }
     else{
         myConfig.malicious_nodes_percentage=100*myConfig.Num_Malicious/myConfig.Num_Nodes;
+    }
+
+    if (vm.count("min_unl")){
+        myConfig.UNL_threshold=vm["min_unl"].as<int>()/2;
+    }
+
+    if (vm.count("overlappingUNLs")){
+        int nval= myConfig.overlappingUNLs*myConfig.Max_UNL;
+        if (myConfig.Min_UNL< nval)
+        {
+            myConfig.Min_UNL=nval;
+        }
     }
 
     if (vm.count("config_file")) {
@@ -245,6 +258,16 @@ int main(int argc, char * argv[])
 
         // Build our UNL
         int unl_count = r_unl(gen);
+        if (myConfig.overlappingUNLs>0)
+        {
+            int nval= myConfig.overlappingUNLs*myConfig.Max_UNL;
+            for (int j=0; j<nval;j++)
+            {
+                nodes[i]->unl.push_back(j);
+                --unl_count;
+            }
+        }
+
         while (unl_count > 0)
         {
             int cn = r_node(gen);
@@ -256,6 +279,18 @@ int main(int argc, char * argv[])
         }
     }
 
+    // mark malicious nodes
+    std::cerr << " Marking malicious nodes, randomly" << std::endl;
+    for (int i=0; i<myConfig.Num_Malicious; i++){
+        int mn=r_node(gen);
+        if (nodes[mn]->isMalicious){
+            i--;
+        }
+        else
+        {
+            nodes[mn]->isMalicious=true;
+        }        
+    }
 
     // create links
     std::cerr << "Creating links" << std::endl;

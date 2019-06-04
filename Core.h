@@ -94,7 +94,7 @@ class Node
 {
 public:
     int n, e2c_latency;
-
+    bool isMalicious;
     std::vector<int> unl;
     std::vector<Link> links;
 
