@@ -19,6 +19,9 @@
 
 // #include <fstream>
 #include <iostream>
+#include <fstream>
+#include <jsoncpp/json/json.h>
+
 #include <random>
 
 #include "Core.h"
@@ -296,7 +299,8 @@ int main(int argc, char * argv[])
         }        
     }
 
-    // create links
+    // create links 
+    // Links are always two-way
     std::cerr << "Creating links" << std::endl;
     for (int i = 0; i < myConfig.Num_Nodes; ++i)
     {
@@ -324,6 +328,7 @@ int main(int argc, char * argv[])
         {
             Message m(i, l.to_node);
             m.data.insert(std::make_pair(i, NodeState(i, 1, nodes[i]->knowledge[i])));
+            nodes[i]->messages_sent++; // counts the first messages as well.
             network.sendMessage(m, l, 0);
         }
     }
@@ -355,6 +360,7 @@ int main(int argc, char * argv[])
         for (const Message& m : ev->second.messages)
         {
             if (m.data.empty()) // message was never sent
+                std::cerr<< "TSAAAAAAAAAA" << std::endl;
                 --nodes[m.from_node]->messages_sent;
             else
                 nodes[m.to_node]->receiveMessage(m, network);
@@ -384,7 +390,17 @@ int main(int argc, char * argv[])
             << "\t" <<myConfig.UNL_threshold << "\t" <<myConfig.overlappingUNLs
             << "\t" << myConfig.Min_c2c_latency << "\t" << myConfig.Max_c2c_latency << "\t" << myConfig.Min_e2c_latency<< "\t" <<myConfig.Max_e2c_latency
             << "\t" << network.master_time<< "\t" << mc<< "\t" <<total_messages_sent << "\t"<< (float)mc/(mc+total_messages_sent)<< "\t"<<isFatal << "\t"<< myConfig.malicious_nodes_percentage<< "\t"<<std::endl ;
-    
+
+    // writting the network topology to file
+    std::ofstream out_fid;
+    out_fid.open("./net_graph_out.topo");
+    Json::StyledWriter writer;
+    Json::Value netjson;
+    Node::network_to_json(nodes,netjson);
+
+    out_fid<< writer.write(netjson);
+    out_fid.close();
+
     for( Node* n : nodes){
         delete(n);
     }

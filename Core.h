@@ -26,6 +26,9 @@
 #include <map>
 #include <cassert>
 
+#include <fstream>
+#include <jsoncpp/json/json.h>
+
 class NodeState
 {
     // A NodeState as propagated by the network
@@ -68,10 +71,26 @@ public:
     int to_node;
     int total_latency;
     int lm_send_time, lm_recv_time;
+    int messages_sent;
     Message *lm;
 
-    Link(int t, int tl) : to_node(t), total_latency(tl), lm_send_time(0), lm_recv_time(0), lm(NULL) { ; }
+    Link(int t, int tl) : to_node(t), total_latency(tl), lm_send_time(0), lm_recv_time(0), messages_sent(0), lm(NULL) { ; }
+
+    int to_json(Json::Value& myval){
+        myval["to_node"]=to_node;
+        myval["total_latency"]=total_latency;
+        myval["messages_sent"]=messages_sent;
+        return 1;
+    }
+
+    int from_json(Json::Value& mval){
+        to_node=mval["to_node"].asInt();
+        total_latency=mval["total_latency"].asInt();
+        messages_sent=0;
+        return 0;
+    }
 };
+
 
 class Network
 {
@@ -87,7 +106,10 @@ public:
         link.lm_send_time = send_time;
         link.lm_recv_time = send_time + link.total_latency;
         link.lm = messages[link.lm_recv_time].addMessage(message);
+        link.messages_sent++;
     }
+
+    
 };
 
 class Node
@@ -124,6 +146,39 @@ public:
 
     void receiveMessage(const Message& m, Network& n);
 
+    int to_json(Json::Value& mval){
+        mval["id"]=n;
+        mval["isMalicious"]=isMalicious;
+        // construct UNL list representation
+        Json::Value unlJson(Json::arrayValue);
+        for (int j : unl){
+            unlJson.append(j);
+        }
+        mval["UNL"]=unlJson;
+        Json::Value linksJson(Json::arrayValue);
+        for ( auto& l : links){
+            Json::Value t;
+            l.to_json(t);
+            linksJson.append(t);
+        }
+        mval["links"]=linksJson;
+
+        mval["messages_sent"]=messages_sent;
+        mval["messages_received"]=messages_received;
+
+        return 1;
+    }
+
+    static int network_to_json(std::vector<Node*> nodes, Json::Value& mval){
+        Json::Value nnet(Json::arrayValue);
+        for ( auto& node : nodes) {
+            Json::Value tmp;
+            node->to_json(tmp);
+            nnet.append(tmp);
+        }
+        mval["Network"]=nnet;
+        return 1;
+    }
 };
 
 #endif
