@@ -4,7 +4,7 @@ import sys
 import matplotlib
 import matplotlib.pyplot as plt
 
-markers_list=["o", "v", "^" ,"<", ">","1","2","3","4","8"] #,"s","p","P","*","+","x","X","D","d"]+[ j for j in range(4,12)] + ["." , "," ,"h","H","|","_","None"] +[j for j in range(4)]
+markers_list=["o", "v", "^" ,"<", ">","s","p","P","*","+","x"]#,"1","2","3","4","8"] #,"s","p","P","*","+","x","X","D","d"]+[ j for j in range(4,12)] + ["." , "," ,"h","H","|","_","None"] +[j for j in range(4)]
 colors_list=["b","r","g","k"]
 linestyles_list=['-',':','-.','--']
 
@@ -18,7 +18,8 @@ for lsl in linestyles_list:
 # fname="./cases_output_test1.csv"
 # fname="./results/case_N_nodesvsMalnodes_2/cases_output_comb.csv"
 # fname="./results/case_N_nodesvsMalnodes_3/cases_output.csv"
-fname="./results/case_NnodesVSMalnodes_ovUNLs_1/cases_output2.csv"
+#fname="./results/case_NnodesVSMalnodes_ovUNLs_1/cases_output2.csv"
+fname="./results/case_NnodesVSMalnodes_ovUNLs_2/cases_output3.csv"
 if len(sys.argv)>1:
     fname=sys.argv[1]
 

@@ -4,7 +4,7 @@ import sys
 import matplotlib
 import matplotlib.pyplot as plt
 
-markers_list=["o", "v", "^" ,"<", ">","1","2","3","4","8"] #,"s","p","P","*","+","x","X","D","d"]+[ j for j in range(4,12)] + ["." , "," ,"h","H","|","_","None"] +[j for j in range(4)]
+markers_list=["o", "v", "^" ,"<", ">","s","p","P","*","+","x"]#,"1","2","3","4","8"] #,"s","p","P","*","+","x","X","D","d"]+[ j for j in range(4,12)] + ["." , "," ,"h","H","|","_","None"] +[j for j in range(4)]
 colors_list=["b","r","g","k"]
 linestyles_list=['-',':','-.','--']
 
@@ -18,8 +18,8 @@ for lsl in linestyles_list:
 # fname="./cases_output_test1.csv"
 # fname="./results/case_N_nodesvsMalnodes_2/cases_output_comb.csv"
 # fname="./results/case_N_nodesvsMalnodes_3/cases_output.csv"
-#fname="./cases_demo.csv"
-fname="./cases_demo_200.csv"
+fname="./cases_demo.csv"
+#fname="./cases_demo_200.csv"
 if len(sys.argv)>1:
     fname=sys.argv[1]
 
@@ -27,7 +27,7 @@ cols= ['Num_nodes' , 'Num_malicious', 'consensus_percent', 'num_outbound_links',
         'min_e2c_latency' , 'max_e2c_latency', 'convergence_time','unprocessed_messages', 'total_messages_sent', 'unprocessed_messages ratio' , "noConvergence", "malicious nodes portion"]
 
 #load csv
-res=pd.read_csv(fname, sep="\t",  header=0,index_col=0)#names=cols,index_col=False
+res=pd.read_csv(fname, sep=",",  header=0,index_col=0)#sep="\t"names=cols,index_col=False
 
 unique_NumNodes=pd.unique(res['Num_nodes'])
 N_unique_NumNodes=pd.unique(res['Num_nodes']).shape[0]

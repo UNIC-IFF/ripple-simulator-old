@@ -293,6 +293,10 @@ int main(int argc, char * argv[])
         if (nodes[mn]->isMalicious){
             i--;
         }
+        else if (mn < myConfig.overlappingUNLs*myConfig.Max_UNL)
+        {// no malicious nodes in UNLs overlapping set
+            i--;
+        }
         else
         {
             nodes[mn]->isMalicious=true;
@@ -359,11 +363,15 @@ int main(int argc, char * argv[])
 
         for (const Message& m : ev->second.messages)
         {
-            if (m.data.empty()) // message was never sent
-                std::cerr<< "TSAAAAAAAAAA" << std::endl;
+            if (m.data.empty())
+            { // message was never sent
+                // std::cerr<< "TSAAAAAAAAAA" << std::endl;
                 --nodes[m.from_node]->messages_sent;
+            }
             else
+            {
                 nodes[m.to_node]->receiveMessage(m, network);
+            }
         }
         
         network.messages.erase(ev);
@@ -393,7 +401,9 @@ int main(int argc, char * argv[])
 
     // writting the network topology to file
     std::ofstream out_fid;
-    out_fid.open("./net_graph_out.topo");
+    char fname[100];
+    sprintf(fname,"outputs/net_graph_out_%d_%2f_%1.2f.topo",myConfig.Num_Nodes,myConfig.malicious_nodes_percentage,myConfig.overlappingUNLs);
+    out_fid.open(fname);
     Json::StyledWriter writer;
     Json::Value netjson;
     Node::network_to_json(nodes,netjson);
