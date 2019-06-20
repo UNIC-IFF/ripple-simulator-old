@@ -125,7 +125,7 @@ public:
 
     int messages_sent, messages_received;
 
-    Node(int nn, int mm) : n(nn), nts(mm, 0), knowledge(mm, 0), messages_sent(0), messages_received(0)
+    Node(int nn, int mm) : n(nn), isMalicious(false) , nts(mm, 0), knowledge(mm, 0), messages_sent(0), messages_received(0)
     { ; }
 
     void processMessage(const Message& m);

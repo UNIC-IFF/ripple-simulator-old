@@ -19,7 +19,9 @@ for lsl in linestyles_list:
 # fname="./results/case_N_nodesvsMalnodes_2/cases_output_comb.csv"
 # fname="./results/case_N_nodesvsMalnodes_3/cases_output.csv"
 #fname="./results/case_NnodesVSMalnodes_ovUNLs_1/cases_output2.csv"
-fname="./results/case_NnodesVSMalnodes_ovUNLs_2/cases_output3.csv"
+#fname="./results/case_NnodesVSMalnodes_ovUNLs_2/cases_output3.csv"
+#fname="./results/case_noMalNodesin_ovUNLs_N1000/cases_output3.csv"
+fname="./results/case_noMalNodesin_ovUNLs_N1000_fixLatency/cases_output3.csv"
 if len(sys.argv)>1:
     fname=sys.argv[1]
 
@@ -66,7 +68,8 @@ fig2, ax2 = plt.subplots()
 
 for i,mpc in enumerate(unique_malpC):
     tmp=res[res['malicious nodes portion']==mpc].drop_duplicates()
-    ax1.semilogy(tmp['Num_nodes'] , tmp['convergence_time'], color=fig_fmts[i][0] ,marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mpc)+' Mal Nodes portion')#plot
+#    ax1.semilogy(tmp['Num_nodes'] , tmp['convergence_time'], color=fig_fmts[i][0] ,marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mpc)+' Mal Nodes portion')#plot
+    ax1.plot(tmp['Num_nodes'] , tmp['convergence_time'], color=fig_fmts[i][0] ,marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mpc)+' Mal Nodes portion')#plot
     ax2.plot(tmp['Num_nodes'] , tmp['unprocessed_messages ratio'], color=fig_fmts[i][0],marker=fig_fmts[i][1], linestyle=fig_fmts[i][2],label=str(mpc)+' Mal Nodes portion')
     
     # plt.yscale('symlog', linthrehy=0.001)
@@ -101,7 +104,8 @@ for i,mnn in enumerate(unique_NumNodes):
         tmp['convergence_time_winf']=tmp['convergence_time']*(np.ones(tmp.shape[0])-tmp['noConvergence'])
         # tmp2=tmp[tmp['noConvergence']==0]
         # ax3.semilogy(tmp2['malicious nodes portion'] , tmp2['convergence_time'], color=fig_fmts[i*N_unique_NumNodes+j][0] ,marker=fig_fmts[i*N_unique_NumNodes+j][1], linestyle=fig_fmts[i*N_unique_NumNodes+j][2],label=str(mnn)+' Num Nodes'+str(munlov)+' ovUNLs')#plot
-        ax3.semilogy(tmp['malicious nodes portion'] , tmp['convergence_time'], color=fig_fmts[i*N_unique_NumNodes+j][0] ,marker=fig_fmts[i*N_unique_NumNodes+j][1], linestyle=fig_fmts[i*N_unique_NumNodes+j][2],label=str(mnn)+' Num Nodes'+str(munlov)+' ovUNLs')#plot
+#        ax3.semilogy(tmp['malicious nodes portion'] , tmp['convergence_time'], color=fig_fmts[i*N_unique_NumNodes+j][0] ,marker=fig_fmts[i*N_unique_NumNodes+j][1], linestyle=fig_fmts[i*N_unique_NumNodes+j][2],label=str(mnn)+' Num Nodes'+str(munlov)+' ovUNLs')#plot
+        ax3.plot(tmp['malicious nodes portion'] , tmp['convergence_time'], color=fig_fmts[i*N_unique_NumNodes+j][0] ,marker=fig_fmts[i*N_unique_NumNodes+j][1], linestyle=fig_fmts[i*N_unique_NumNodes+j][2],label=str(mnn)+' Num Nodes'+str(munlov)+' ovUNLs')#plot
         ax4.plot(tmp['malicious nodes portion'] , tmp['unprocessed_messages ratio'], color=fig_fmts[i*N_unique_NumNodes+j][0],marker=fig_fmts[i*N_unique_NumNodes+j][1], linestyle=fig_fmts[i*N_unique_NumNodes+j][2],label=str(mnn)+' Num Nodes'+str(munlov)+' ovUNLs')
         ax5.plot(tmp['malicious nodes portion'] , tmp['convergence_time']/mnn, color=fig_fmts[i*N_unique_NumNodes+j][0],marker=fig_fmts[i*N_unique_NumNodes+j][1], linestyle=fig_fmts[i*N_unique_NumNodes+j][2],label=str(mnn)+' Num Nodes'+str(munlov)+' ovUNLs')
         ax6.plot(tmp['malicious nodes portion'] , tmp['total_messages_sent']/mnn, color=fig_fmts[i*N_unique_NumNodes+j][0],marker=fig_fmts[i*N_unique_NumNodes+j][1], linestyle=fig_fmts[i*N_unique_NumNodes+j][2],label=str(mnn)+' Num Nodes'+str(munlov)+' ovUNLs')

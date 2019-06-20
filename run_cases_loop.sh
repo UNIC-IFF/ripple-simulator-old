@@ -8,7 +8,7 @@ declare -a num_nodes_cases=( 1000 ) #50 100 400 1000 ) #  1200 1500 2000
 #declare -a percentage_malicious=( 0 1 2 4 5 8 10 15 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 55 60 70 80 85) #(0 1 2 4  5 8 10  15  20  22 23 25 30)
 declare -a percentage_malicious=( 0 10 15 20 21 22 23 24 25 ) #  30 31 32 33 40 45 50 ) #(0 1 2 4  5 8 10  15  20  22 23 25 30 70 80 85)
 #declare -a overlappingUNLs=( 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.85 )
-declare -a overlappingUNLs=( 0.85 0.9 0.91 0.95 0.99 )
+declare -a overlappingUNLs=( 0.5 0.6 0.7 0.75 0.8 0.81 0.85 0.9 0.91 0.95 0.99 )
 
 outputfile="./cases_output3.csv"
 
@@ -33,7 +33,8 @@ for nncase in "${num_nodes_cases[@]}"; do
 		for ovUNLs in "${overlappingUNLs[@]}"; do
 			echo --num_nodes $nncase --mal_nodes_pC $pcmal --overlappingUNLs $ovUNLs
 			# $simulatorExe --num_nodes $nncase --num_malicious $( echo $pcmal $nncase | awk '{printf "%d\n",$1*$2/100}') >> $outputfile 
-			$simulatorExe --num_nodes $nncase --mal_nodes_pC $pcmal  --overlappingUNLs $ovUNLs >> $outputfile 
+			#$simulatorExe --num_nodes $nncase --mal_nodes_pC $pcmal  --overlappingUNLs $ovUNLs >> $outputfile 
+			$simulatorExe --num_nodes $nncase --mal_nodes_pC $pcmal  --overlappingUNLs $ovUNLs --max_e2c_latency 25 --min_e2c_latency 25 --max_c2c_latency 80 --min_c2c_latency 80 >> $outputfile 
 		done
 	done
 done

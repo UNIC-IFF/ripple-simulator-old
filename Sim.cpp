@@ -290,11 +290,12 @@ int main(int argc, char * argv[])
     std::cerr << " Marking malicious nodes, randomly" << std::endl;
     for (int i=0; i<myConfig.Num_Malicious; i++){
         int mn=r_node(gen);
-        if (nodes[mn]->isMalicious){
-            i--;
-        }
-        else if (mn < myConfig.overlappingUNLs*myConfig.Max_UNL)
+        if (mn < myConfig.overlappingUNLs*myConfig.Max_UNL)
         {// no malicious nodes in UNLs overlapping set
+            i--;
+            continue;
+        }
+        if (nodes[mn]->isMalicious){
             i--;
         }
         else
@@ -411,6 +412,7 @@ int main(int argc, char * argv[])
     out_fid<< writer.write(netjson);
     out_fid.close();
 
+    std::cerr<<"Node0 : "<< nodes[0]->isMalicious << std::endl;
     for( Node* n : nodes){
         delete(n);
     }
