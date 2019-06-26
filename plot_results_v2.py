@@ -21,7 +21,8 @@ for lsl in linestyles_list:
 #fname="./results/case_NnodesVSMalnodes_ovUNLs_1/cases_output2.csv"
 #fname="./results/case_NnodesVSMalnodes_ovUNLs_2/cases_output3.csv"
 #fname="./results/case_noMalNodesin_ovUNLs_N1000/cases_output3.csv"
-fname="./results/case_noMalNodesin_ovUNLs_N1000_fixLatency/cases_output3.csv"
+#fname="./results/case_noMalNodesin_ovUNLs_N1000_fixLatency/cases_output3.csv"
+fname="./results/case_noMalNodesin_ovUNLs_N1000_fixLatency3/cases_output3.csv"
 if len(sys.argv)>1:
     fname=sys.argv[1]
 
