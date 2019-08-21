@@ -26,8 +26,11 @@ fname="./results/case_noMalNodesin_ovUNLs_N1000_fixLatency3/cases_output3.csv"
 if len(sys.argv)>1:
     fname=sys.argv[1]
 
-cols= ['Num_nodes' , 'Num_malicious', 'consensus_percent', 'num_outbound_links', 'max_unl', 'min_unl', 'unl_threshold','overlappingUNLs' , 'min_c2c_latency', 'max_c2c_latency', 
+cols= ['Num_nodes' , 'Num_malicious', 'consensus_percent', 'num_outbound_links', 'max_unl', 'min_unl', 'unl_threshold','overlappingUNLs','malpC_in_ovUNLs' , 'min_c2c_latency', 'max_c2c_latency', 
         'min_e2c_latency' , 'max_e2c_latency', 'convergence_time','unprocessed_messages', 'total_messages_sent', 'unprocessed_messages ratio' , "noConvergence", "malicious nodes portion"]
+
+#cols= ['Num_nodes' , 'Num_malicious', 'consensus_percent', 'num_outbound_links', 'max_unl', 'min_unl', 'unl_threshold', 'overlappingUNLs','min_c2c_latency', 'max_c2c_latency', 
+#        'min_e2c_latency' , 'max_e2c_latency', 'convergence_time','unprocessed_messages', 'total_messages_sent', 'unprocessed_messages ratio' , "noConvergence"] #OLD
 
 #load csv
 res=pd.read_csv(fname, sep="\t", names=cols, header=None,index_col=False)

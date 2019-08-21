@@ -165,6 +165,7 @@ int main(int argc, char * argv[])
         ("min_unl", po::value<int>(&myConfig.Min_UNL), "set min Unique Node list size per node")
         ("unl_threshold", po::value<int>(&myConfig.UNL_threshold), "sets threshold for changing node's position")
         ("overlappingUNLs", po::value<float>(&myConfig.overlappingUNLs),"force to use the first overlappingUNLs*MAX_UNL nodes in all UNLs. \n It sets MIN_UNL=max(min_unl,overlappingUNLs*MAX_UNL nodes) ")
+        ("mal_nodes_pC_in_ovUNL", po::value<float>(&myConfig.malicious_nodes_percentage_in_ovUNL),"set percentange of nodes in overlapping UNLs to be malicious")
         ("base_delay", po::value<int>(&myConfig.Base_Delay), "Base_Delay")
         ("self_weight", po::value<int>(&myConfig.Self_Weight), "Self_Weight")
         ("packets_on_wire", po::value<int>(&myConfig.Packets_on_Wire), "packets on wire")
@@ -188,6 +189,7 @@ int main(int argc, char * argv[])
         myConfig.malicious_nodes_percentage=100*myConfig.Num_Malicious/myConfig.Num_Nodes;
     }
 
+
     if ((vm.count("min_unl")) && (vm.count("unl_threshold")==0 ))
     {
         myConfig.UNL_threshold=vm["min_unl"].as<int>()/2;
@@ -201,6 +203,16 @@ int main(int argc, char * argv[])
             if (vm.count("unl_threshold")==0)
                 myConfig.UNL_threshold=myConfig.Min_UNL/2;
         }
+    }
+
+    if (vm.count("mal_nodes_pC_in_ovUNL")){
+        int nval= myConfig.overlappingUNLs*myConfig.Max_UNL;
+        myConfig.Num_Malicious_in_ovUNLs=nval * vm["mal_nodes_pC_in_ovUNL"].as<float>() /100 ;
+    }
+    else{
+        myConfig.malicious_nodes_percentage_in_ovUNL=myConfig.malicious_nodes_percentage;//100*myConfig.Num_Malicious/myConfig.Num_Nodes;
+        int nval= myConfig.overlappingUNLs*myConfig.Max_UNL;
+        myConfig.Num_Malicious_in_ovUNLs=nval * myConfig.malicious_nodes_percentage_in_ovUNL /100 ;
     }
 
     if (vm.count("config_file")) {
@@ -226,7 +238,7 @@ int main(int argc, char * argv[])
     std::cerr << "Running simulator for : \n\t "<< myConfig.Num_Nodes << " Nodes, " << myConfig.Num_Malicious << " of them are MALICIOUS, and CONSENSUS PERCENT " << myConfig.consensus_percent 
             << "\n \t NUM_OUTBOUND_LINKS per Node : " <<  myConfig.Num_Outbound_Links
             << "\n \tNum of UNL nodes per node follows Uniform(" << myConfig.Min_UNL << "," <<myConfig.Max_UNL << ") and the threshold to change position is " <<myConfig.UNL_threshold 
-            << "\n \t with overlapping UNLs percentange "<< myConfig.overlappingUNLs*100 <<"% "
+            << "\n \t with overlapping UNLs percentange "<< myConfig.overlappingUNLs*100 <<"%, " <<myConfig.malicious_nodes_percentage_in_ovUNL<<"% of them malicious ( "<<myConfig.Num_Malicious_in_ovUNLs<<") "
             << "\n \tNetwork latency between core nodes follows Uniform (" << myConfig.Min_c2c_latency << "," << myConfig.Max_c2c_latency << ") " 
             << "\n \tNetwork latency between end nodes and core nodes follows Uniform ("<<myConfig.Min_e2c_latency<< "," <<myConfig.Max_e2c_latency << ")"
             << std::endl ;
@@ -237,6 +249,8 @@ int main(int argc, char * argv[])
     std::uniform_int_distribution<> r_c2c(myConfig.Min_c2c_latency, myConfig.Max_c2c_latency);
     std::uniform_int_distribution<> r_unl(myConfig.Min_UNL, myConfig.Max_UNL);
     std::uniform_int_distribution<> r_node(0, myConfig.Num_Nodes-1);
+    std::uniform_int_distribution<> r_nodeInUNL(0, myConfig.Min_UNL-1);
+    std::uniform_int_distribution<> r_nodeOutOfUNL(myConfig.Min_UNL,myConfig.Num_Nodes-1);
 
     // Node* nodes[myConfig.Num_Nodes];
     // Node nodes= new Node[myConfig.Num_Nodes];
@@ -288,19 +302,29 @@ int main(int argc, char * argv[])
 
     // mark malicious nodes
     std::cerr << " Marking malicious nodes, randomly" << std::endl;
-    for (int i=0; i<myConfig.Num_Malicious; i++){
-        int mn=r_node(gen);
-        if (mn < myConfig.overlappingUNLs*myConfig.Max_UNL)
-        {// no malicious nodes in UNLs overlapping set
-            i--;
-            continue;
-        }
+    int marked_malicious=0;
+    // mark malicious nodes in overlapping UNLs
+    for (int i=0; i< myConfig.Num_Malicious_in_ovUNLs;i++){
+        int mn = r_nodeInUNL(gen);
         if (nodes[mn]->isMalicious){
             i--;
         }
         else
         {
             nodes[mn]->isMalicious=true;
+            marked_malicious++;
+        }
+    }
+    // mark the rest malicious nodes
+    for (int i=marked_malicious; i<myConfig.Num_Malicious; i++){
+        int mn=r_nodeOutOfUNL(gen);
+        if (nodes[mn]->isMalicious){
+            i--;
+        }
+        else
+        {
+            nodes[mn]->isMalicious=true;
+            marked_malicious++;
         }        
     }
 
@@ -396,7 +420,7 @@ int main(int argc, char * argv[])
     std::cerr << "The average node sent " << total_messages_sent/myConfig.Num_Nodes << " messages" << std::endl;
 
     std::cout << myConfig.Num_Nodes <<"\t"<< myConfig.Num_Malicious << "\t" << myConfig.consensus_percent << "\t" <<  myConfig.Num_Outbound_Links << "\t" << myConfig.Max_UNL << "\t" <<myConfig.Min_UNL 
-            << "\t" <<myConfig.UNL_threshold << "\t" <<myConfig.overlappingUNLs
+            << "\t" <<myConfig.UNL_threshold << "\t" <<myConfig.overlappingUNLs <<"\t"<<myConfig.malicious_nodes_percentage_in_ovUNL
             << "\t" << myConfig.Min_c2c_latency << "\t" << myConfig.Max_c2c_latency << "\t" << myConfig.Min_e2c_latency<< "\t" <<myConfig.Max_e2c_latency
             << "\t" << network.master_time<< "\t" << mc<< "\t" <<total_messages_sent << "\t"<< (float)mc/(mc+total_messages_sent)<< "\t"<<isFatal << "\t"<< myConfig.malicious_nodes_percentage<< "\t"<<std::endl ;
 

@@ -96,6 +96,8 @@ class SimulatorConfiguration{
         int UNL_threshold   = UNL_THRESH;
         float overlappingUNLs= 0; // 0 for not forcing, otherwise the percentage of MAX_UNL
                                     // when >0, MIN_UNL=max(overlappingUNLs*MAX_UNL, MIN_UNL) 
+        int Num_Malicious_in_ovUNLs = -1;
+        float malicious_nodes_percentage_in_ovUNL   = -1; // -1 acts as DONOT CARE
 
         int Base_Delay  = BASE_DELAY;
         int Self_Weight = SELF_WEIGHT;
@@ -127,6 +129,7 @@ class SimulatorConfiguration{
             Num_Nodes=pt.get<int>("Nodes.num_nodes");
             Num_Malicious=pt.get<int>("Nodes.num_malicious");
             malicious_nodes_percentage = 100.0* Num_Malicious / Num_Nodes;
+            malicious_nodes_percentage_in_ovUNL=malicious_nodes_percentage;
 
             consensus_percent=pt.get<int>("Blockchain.consensus_percent");
             Max_UNL=pt.get<int>("Blockchain.max_unl");
