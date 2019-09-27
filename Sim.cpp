@@ -17,42 +17,26 @@
 */
 //==============================================================================
 
+// #include <fstream>
 #include <iostream>
+#include <fstream>
+#include <jsoncpp/json/json.h>
+
 #include <random>
 
 #include "Core.h"
 
-#define LEDGER_CONVERGE          4
-#define LEDGER_FORCE_CONVERGE    7
-#define AV_MIN_CONSENSUS        50
-#define AV_AVG_CONSENSUS        60
-#define AV_MAX_CONSENSUS        70
+#include "config.hpp"
+
+// #include <boost/program_options/cmdline.hpp>
+#include <boost/program_options.hpp>
+// #include <boost/program_options/variables_map.hpp>
+// #include <boost/program_options/options_description.hpp>
 
 
-#define NUM_NODES             1000
-#define NUM_MALICIOUS_NODES     15
-#define CONSENSUS_PERCENT       80
+namespace po= boost::program_options ;
 
-// Latencies in milliseconds
-// E2C - End to core, the latency from a node to a nearby node
-// C2C - Core to core, the additional latency when nodes are far 
-#define MIN_E2C_LATENCY          5
-#define MAX_E2C_LATENCY         50
-#define MIN_C2C_LATENCY          5
-#define MAX_C2C_LATENCY        200
-
-#define NUM_OUTBOUND_LINKS      10
-
-#define UNL_MIN                 20
-#define UNL_MAX                 30
-#define UNL_THRESH              (UNL_MIN/2) // unl datapoints we have to have before we change position
-
-#define BASE_DELAY               1 // extra time we delay a message to coalesce/suppress
-
-#define SELF_WEIGHT              1 // how many UNL votes you give yourself
-
-#define PACKETS_ON_WIRE          3 // how many packets can be "on the wire" per link per direction
-                                   // simulates non-infinite bandwidth
+static SimulatorConfiguration myConfig;
 
 int nodes_positive=0, nodes_negative=0;
 
@@ -105,7 +89,7 @@ void Node::receiveMessage(const Message& m, Network& network)
         }
     }
 
-    if (n < NUM_MALICIOUS_NODES) // if we are a malicious node, be contrarian
+    if (this->isMalicious) // if we are a malicious node, be contrarian
         unl_balance = -unl_balance;
 
     // add a bias in favor of 'no' as time passes
@@ -113,9 +97,9 @@ void Node::receiveMessage(const Message& m, Network& network)
     unl_balance -= network.master_time / 250;
 
     bool pos_change=false;
-    if (unl_count >= UNL_THRESH)
+    if (unl_count >= myConfig.UNL_threshold)
     { // We have enough data to make decisions
-        if ( (knowledge[n] == 1) && (unl_balance < (-SELF_WEIGHT)) )
+        if ( (knowledge[n] == 1) && (unl_balance < (-myConfig.Self_Weight)) )
         {
             // we switch to -
             knowledge[n] = -1;
@@ -124,7 +108,7 @@ void Node::receiveMessage(const Message& m, Network& network)
             changes.insert(std::make_pair(n, NodeState(n, ++nts[n], -1)));
             pos_change=true;
         }
-        else if ( (knowledge[n] == -1) && (unl_balance > SELF_WEIGHT) )
+        else if ( (knowledge[n] == -1) && (unl_balance > myConfig.Self_Weight) )
         {
             // we switch to +
             knowledge[n] = 1;
@@ -150,9 +134,9 @@ void Node::receiveMessage(const Message& m, Network& network)
                 if (!pos_change)
                 {
                     // delay the messag a bit to permit coalescing and suppression
-                    send_time += BASE_DELAY;
+                    send_time += myConfig.Base_Delay;
                     if (link.lm_recv_time > send_time) // a packet is on the wire
-                        send_time += link.total_latency / PACKETS_ON_WIRE; // wait a bit extra to send
+                        send_time += link.total_latency / myConfig.Packets_on_Wire; // wait a bit extra to send
                 }
                 network.sendMessage(Message(n, link.to_node, changes), link, send_time);
                 messages_sent++;
@@ -161,23 +145,122 @@ void Node::receiveMessage(const Message& m, Network& network)
     }
 }
 
-int main(void)
+int main(int argc, char * argv[])
 {
+    // std::string desc = "Ripple simulator";
+    // Declare the supported options.
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("help", "produce help message")
+        ("num_nodes", po::value<int>(&myConfig.Num_Nodes), "set number of nodes")
+        ("mal_nodes_pC", po::value<float>(&myConfig.malicious_nodes_percentage),"set percentange of num_nodes to be malicious ")
+        ("num_malicious", po::value<int>(&myConfig.Num_Malicious), "set number of malicious nodes")
+        ("max_e2c_latency", po::value<int>(&myConfig.Max_e2c_latency), "set max end to core latency")
+        ("min_e2c_latency", po::value<int>(&myConfig.Min_e2c_latency), "set min end to core latency")
+        ("max_c2c_latency", po::value<int>(&myConfig.Max_c2c_latency), "set max core to core latency")
+        ("min_c2c_latency", po::value<int>(&myConfig.Min_c2c_latency), "set min core to core latency")
+        ("consensus_percent", po::value<int>(&myConfig.consensus_percent), "set percentance for consensus")
+        ("num_outbound_links", po::value<int>(&myConfig.Num_Outbound_Links), "set number of outbound links per node")
+        ("max_unl", po::value<int>(&myConfig.Max_UNL), "set max Unique Node list size per node")
+        ("min_unl", po::value<int>(&myConfig.Min_UNL), "set min Unique Node list size per node")
+        ("unl_threshold", po::value<int>(&myConfig.UNL_threshold), "sets threshold for changing node's position")
+        ("overlappingUNLs", po::value<float>(&myConfig.overlappingUNLs),"force to use the first overlappingUNLs*MAX_UNL nodes in all UNLs. \n It sets MIN_UNL=max(min_unl,overlappingUNLs*MAX_UNL nodes) ")
+        ("mal_nodes_pC_in_ovUNL", po::value<float>(&myConfig.malicious_nodes_percentage_in_ovUNL),"set percentange of nodes in overlapping UNLs to be malicious")
+        ("base_delay", po::value<int>(&myConfig.Base_Delay), "Base_Delay")
+        ("self_weight", po::value<int>(&myConfig.Self_Weight), "Self_Weight")
+        ("packets_on_wire", po::value<int>(&myConfig.Packets_on_Wire), "packets on wire")
+        ("config_file", po::value<std::string>(), "load from configuration file")
+
+    ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);    
+
+    if (vm.count("help")) {
+        std::cout << desc << "\n";
+        return 1;
+    }
+
+    if (vm.count("mal_nodes_pC")){
+        myConfig.Num_Malicious=myConfig.Num_Nodes * vm["mal_nodes_pC"].as<float>() /100 ;
+    }
+    else{
+        myConfig.malicious_nodes_percentage=100*myConfig.Num_Malicious/myConfig.Num_Nodes;
+    }
+
+
+    if ((vm.count("min_unl")) && (vm.count("unl_threshold")==0 ))
+    {
+        myConfig.UNL_threshold=vm["min_unl"].as<int>()/2;
+    }
+
+    if (vm.count("overlappingUNLs")){
+        int nval= myConfig.overlappingUNLs*myConfig.Max_UNL;
+        if (myConfig.Min_UNL< nval)
+        {
+            myConfig.Min_UNL=nval;
+            if (vm.count("unl_threshold")==0)
+                myConfig.UNL_threshold=myConfig.Min_UNL/2;
+        }
+    }
+
+    if (vm.count("mal_nodes_pC_in_ovUNL")){
+        int nval= myConfig.overlappingUNLs*myConfig.Max_UNL;
+        myConfig.Num_Malicious_in_ovUNLs=nval * vm["mal_nodes_pC_in_ovUNL"].as<float>() /100 ;
+    }
+    else{
+        myConfig.malicious_nodes_percentage_in_ovUNL=myConfig.malicious_nodes_percentage;//100*myConfig.Num_Malicious/myConfig.Num_Nodes;
+        int nval= myConfig.overlappingUNLs*myConfig.Max_UNL;
+        myConfig.Num_Malicious_in_ovUNLs=nval * myConfig.malicious_nodes_percentage_in_ovUNL /100 ;
+    }
+
+    if (vm.count("config_file")) {
+        std::cerr << "Using config file : " << vm["config_file"].as<std::string>() << std::endl;
+        myConfig.read_configFile(vm["config_file"].as<std::string>()); 
+    
+    } 
+
+    // // getting the configuration parameters
+    // if (argc != 2){
+    //     // using defaults
+    //     std::cerr << "Using default settings" << std::endl 
+    //         << " To load configurations use: " << argv[0] << " <config_filename>" << std::endl;
+    // }
+    // else {
+    //     std::cerr << "Using config file : " << argv[1] << std::endl;
+    //     myConfig.read_configFile(argv[1]);
+    // }
+
+
+
+
+    std::cerr << "Running simulator for : \n\t "<< myConfig.Num_Nodes << " Nodes, " << myConfig.Num_Malicious << " of them are MALICIOUS, and CONSENSUS PERCENT " << myConfig.consensus_percent 
+            << "\n \t NUM_OUTBOUND_LINKS per Node : " <<  myConfig.Num_Outbound_Links
+            << "\n \tNum of UNL nodes per node follows Uniform(" << myConfig.Min_UNL << "," <<myConfig.Max_UNL << ") and the threshold to change position is " <<myConfig.UNL_threshold 
+            << "\n \t with overlapping UNLs percentange "<< myConfig.overlappingUNLs*100 <<"%, " <<myConfig.malicious_nodes_percentage_in_ovUNL<<"% of them malicious ( "<<myConfig.Num_Malicious_in_ovUNLs<<") "
+            << "\n \tNetwork latency between core nodes follows Uniform (" << myConfig.Min_c2c_latency << "," << myConfig.Max_c2c_latency << ") " 
+            << "\n \tNetwork latency between end nodes and core nodes follows Uniform ("<<myConfig.Min_e2c_latency<< "," <<myConfig.Max_e2c_latency << ")"
+            << std::endl ;
 
     // This will produce the same results each time
     std::mt19937 gen;
-    std::uniform_int_distribution<> r_e2c(MIN_E2C_LATENCY, MAX_E2C_LATENCY);
-    std::uniform_int_distribution<> r_c2c(MIN_C2C_LATENCY, MAX_C2C_LATENCY);
-    std::uniform_int_distribution<> r_unl(UNL_MIN, UNL_MAX);
-    std::uniform_int_distribution<> r_node(0, NUM_NODES-1);
+    std::uniform_int_distribution<> r_e2c(myConfig.Min_e2c_latency, myConfig.Max_e2c_latency);
+    std::uniform_int_distribution<> r_c2c(myConfig.Min_c2c_latency, myConfig.Max_c2c_latency);
+    std::uniform_int_distribution<> r_unl(myConfig.Min_UNL, myConfig.Max_UNL);
+    std::uniform_int_distribution<> r_node(0, myConfig.Num_Nodes-1);
+    std::uniform_int_distribution<> r_nodeInUNL(0, myConfig.Min_UNL-1);
+    std::uniform_int_distribution<> r_nodeOutOfUNL(myConfig.Min_UNL,myConfig.Num_Nodes-1);
 
-    Node* nodes[NUM_NODES];
-
+    // Node* nodes[myConfig.Num_Nodes];
+    // Node nodes= new Node[myConfig.Num_Nodes];
+    std::vector<Node*> nodes;
     // create nodes
     std::cerr << "Creating nodes" << std::endl;
-    for (int i = 0; i < NUM_NODES; ++i)
+    for (int i = 0; i < myConfig.Num_Nodes; ++i)
     {
-        nodes[i] = new Node(i, NUM_NODES);
+        // nodes[i] = new Node(i, myConfig.Num_Nodes);
+        nodes.push_back(new Node(i,myConfig.Num_Nodes));
         nodes[i]->e2c_latency = r_e2c(gen);
 
         // our own position starts as 50/50 split
@@ -196,6 +279,16 @@ int main(void)
 
         // Build our UNL
         int unl_count = r_unl(gen);
+        if (myConfig.overlappingUNLs>0)
+        {
+            int nval= myConfig.overlappingUNLs*myConfig.Max_UNL;
+            for (int j=0; j<nval;j++)
+            {
+                nodes[i]->unl.push_back(j);
+                --unl_count;
+            }
+        }
+
         while (unl_count > 0)
         {
             int cn = r_node(gen);
@@ -207,12 +300,40 @@ int main(void)
         }
     }
 
+    // mark malicious nodes
+    std::cerr << " Marking malicious nodes, randomly" << std::endl;
+    int marked_malicious=0;
+    // mark malicious nodes in overlapping UNLs
+    for (int i=0; i< myConfig.Num_Malicious_in_ovUNLs;i++){
+        int mn = r_nodeInUNL(gen);
+        if (nodes[mn]->isMalicious){
+            i--;
+        }
+        else
+        {
+            nodes[mn]->isMalicious=true;
+            marked_malicious++;
+        }
+    }
+    // mark the rest malicious nodes
+    for (int i=marked_malicious; i<myConfig.Num_Malicious; i++){
+        int mn=r_nodeOutOfUNL(gen);
+        if (nodes[mn]->isMalicious){
+            i--;
+        }
+        else
+        {
+            nodes[mn]->isMalicious=true;
+            marked_malicious++;
+        }        
+    }
 
-    // create links
+    // create links 
+    // Links are always two-way
     std::cerr << "Creating links" << std::endl;
-    for (int i = 0; i < NUM_NODES; ++i)
+    for (int i = 0; i < myConfig.Num_Nodes; ++i)
     {
-        int links = NUM_OUTBOUND_LINKS;
+        int links = myConfig.Num_Outbound_Links;
         while (links > 0)
         {
             int lt = r_node(gen);
@@ -230,30 +351,34 @@ int main(void)
 
     // trigger all nodes to make initial broadcasts of their own positions
     std::cerr << "Creating initial messages" << std::endl;
-    for (int i = 0; i < NUM_NODES; ++i)
+    for (int i = 0; i < myConfig.Num_Nodes; ++i)
     {
         for (Link& l : nodes[i]->links)
         {
             Message m(i, l.to_node);
             m.data.insert(std::make_pair(i, NodeState(i, 1, nodes[i]->knowledge[i])));
+            nodes[i]->messages_sent++; // counts the first messages as well.
             network.sendMessage(m, l, 0);
         }
     }
     std::cerr << "Created " << network.messages.size()  << " events" << std::endl;
     
+    bool isFatal=false;
     // run simulation
     do
     {
-        if (nodes_positive > (NUM_NODES * CONSENSUS_PERCENT / 100))
+        if (nodes_positive > (myConfig.Num_Nodes * myConfig.consensus_percent / 100))
             break;
-        if (nodes_negative > (NUM_NODES * CONSENSUS_PERCENT / 100))
+        if (nodes_negative > (myConfig.Num_Nodes * myConfig.consensus_percent / 100))
             break;
         
         std::map<int, Event>::iterator ev=network.messages.begin();
         if (ev == network.messages.end())
         {
             std::cerr << "Fatal: Radio Silence" << std::endl;
-            return 0;
+            isFatal=true;
+            break;
+            // return 0;
         }
 
         if ((ev->first / 100) > (network.master_time / 100))
@@ -263,10 +388,15 @@ int main(void)
 
         for (const Message& m : ev->second.messages)
         {
-            if (m.data.empty()) // message was never sent
+            if (m.data.empty())
+            { // message was never sent
+                // std::cerr<< "TSAAAAAAAAAA" << std::endl;
                 --nodes[m.from_node]->messages_sent;
+            }
             else
+            {
                 nodes[m.to_node]->receiveMessage(m, network);
+            }
         }
         
         network.messages.erase(ev);
@@ -275,12 +405,39 @@ int main(void)
     int mc = 0;
     for (std::map<int, Event>::iterator it = network.messages.begin(); it != network.messages.end(); ++it)
             mc += it->second.messages.size();
+
+    if(!isFatal)
         std::cerr << "Consensus reached in " << network.master_time << " ms with " << mc
         << " messages on the wire" << std::endl;
+    else
+        std::cerr << "FATAL: Radio Silence in " << network.master_time << " ms with " << mc << " messages on the wire" << std::endl;
+    
     
     // output results
     long total_messages_sent= 0 ;
-    for (int i = 0; i < NUM_NODES; ++i)
+    for (int i = 0; i < myConfig.Num_Nodes; ++i)
         total_messages_sent += nodes[i]->messages_sent;
-    std::cerr << "The average node sent " << total_messages_sent/NUM_NODES << " messages" << std::endl;
+    std::cerr << "The average node sent " << total_messages_sent/myConfig.Num_Nodes << " messages" << std::endl;
+
+    std::cout << myConfig.Num_Nodes <<"\t"<< myConfig.Num_Malicious << "\t" << myConfig.consensus_percent << "\t" <<  myConfig.Num_Outbound_Links << "\t" << myConfig.Max_UNL << "\t" <<myConfig.Min_UNL 
+            << "\t" <<myConfig.UNL_threshold << "\t" <<myConfig.overlappingUNLs <<"\t"<<myConfig.malicious_nodes_percentage_in_ovUNL
+            << "\t" << myConfig.Min_c2c_latency << "\t" << myConfig.Max_c2c_latency << "\t" << myConfig.Min_e2c_latency<< "\t" <<myConfig.Max_e2c_latency
+            << "\t" << network.master_time<< "\t" << mc<< "\t" <<total_messages_sent << "\t"<< (float)mc/(mc+total_messages_sent)<< "\t"<<isFatal << "\t"<< myConfig.malicious_nodes_percentage<< "\t"<<std::endl ;
+
+    // writting the network topology to file
+    std::ofstream out_fid;
+    char fname[100];
+    sprintf(fname,"outputs/net_graph_out_%d_%2f_%1.2f.topo",myConfig.Num_Nodes,myConfig.malicious_nodes_percentage,myConfig.overlappingUNLs);
+    out_fid.open(fname);
+    Json::StyledWriter writer;
+    Json::Value netjson;
+    Node::network_to_json(nodes,netjson);
+
+    out_fid<< writer.write(netjson);
+    out_fid.close();
+
+    std::cerr<<"Node0 : "<< nodes[0]->isMalicious << std::endl;
+    for( Node* n : nodes){
+        delete(n);
+    }
 }
