@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 
 import os
 
-path_prefix='./graph1_case'
+#path_prefix='./graph1_case'
+path_prefix='./graph1_fixLatency_case'
 
 #########################
 # formating colors_list
@@ -35,10 +36,11 @@ for ncase in Nnodes_cases:
             os.mkdir(path_prefix+'N%s_%s'%(str(ncase),str(ovlim[1])))
 
 
-fdata1= pd.read_csv("../case_ovUNL85_out.csv",'\t')
-fdata2= pd.read_csv("../case_ovUNL90_out.csv",'\t')
-
+fdata1= pd.read_csv("../cases_N1000_fixLatency_out.csv",'\t') #"../case_ovUNL85_out.csv",'\t')
+fdata2= pd.read_csv("../cases_varN_fixLatency_out2.csv",'\t') #pd.read_csv("../case_ovUNL90_out.csv",'\t')
 fdata3=fdata1.append(fdata2)
+
+#fdata3=pd.read_csv("../cases_N1000_fixLatency_out.csv",'\t')
 print(fdata3.shape)
 fdata=fdata3[fdata3.columns[1:]].drop_duplicates()
 print(fdata.shape)
@@ -118,7 +120,7 @@ fig2, ax2 = plt.subplots()
 
 unique_Nnodes=fdata['Num_nodes'].unique()
 
-path_prefix='./graph2_case_'
+path_prefix='./graph2_fixLatency_case_'
 ## Creating data dir
 if os.path.exists(path_prefix+'ovUNL0.90')==False :
 	os.mkdir(path_prefix+'ovUNL0.90')
